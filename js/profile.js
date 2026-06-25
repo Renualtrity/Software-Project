@@ -63,8 +63,12 @@ MCGA.Profile = (function() {
         var html = '<div class="fav-list">';
         for (var i = 0; i < Math.min(favorites.length, 5); i++) {
             var mod = favorites[i];
+            var iconHtml = mod.icon ?
+                '<img src="' + mod.icon + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\';" style="width:24px;height:24px;border-radius:4px;">' +
+                '<span style="display:none">📦</span>' :
+                '<span>📦</span>';
             html += '<div class="fav-item" onclick="showPage(\'market\')">' +
-                '<span class="fav-icon">' + (mod.icon || '📦') + '</span>' +
+                '<span class="fav-icon">' + iconHtml + '</span>' +
                 '<span class="fav-name">' + escapeHtml(mod.modName || mod.modId) + '</span>' +
                 '<span class="fav-version">MC ' + mod.mcVersion + '</span>' +
                 '</div>';
@@ -87,8 +91,12 @@ MCGA.Profile = (function() {
         var html = '<div class="download-list">';
         for (var i = 0; i < Math.min(downloads.length, 5); i++) {
             var mod = downloads[i];
+            var iconHtml = mod.icon ?
+                '<img src="' + mod.icon + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\';" style="width:24px;height:24px;border-radius:4px;">' +
+                '<span style="display:none">📦</span>' :
+                '<span>📦</span>';
             html += '<div class="download-item">' +
-                '<span class="download-icon">' + (mod.icon || '📦') + '</span>' +
+                '<span class="download-icon">' + iconHtml + '</span>' +
                 '<span class="download-name">' + escapeHtml(mod.modName || mod.modId) + '</span>' +
                 '<span class="download-version">MC ' + mod.mcVersion + '</span>' +
                 '</div>';
@@ -251,7 +259,14 @@ MCGA.Profile = (function() {
             MCGA.showNotification('请先登录', 'warning');
             return;
         }
-        MCGA.showNotification('设备管理功能开发中', 'info');
+        var devices = MCGA.Core.Profile.getLoginDevices();
+        var deviceList = devices.map(function(d) {
+            return '- ' + d.name + ' (' + (d.isCurrent ? '当前设备' : d.location) + ')';
+        }).join('\n');
+
+        if (confirm('当前登录设备列表：\n\n' + deviceList + '\n\n是否要管理设备？')) {
+            MCGA.showNotification('设备管理功能：您可以在设置中查看登录设备列表', 'info');
+        }
     }
 
     function deleteAccount() {
@@ -259,7 +274,7 @@ MCGA.Profile = (function() {
             MCGA.showNotification('请先登录', 'warning');
             return;
         }
-        if (!confirm('确定要注销账号吗？此操作不可恢复！')) return;
+        if (!confirm('⚠️ 警告：此操作将永久删除您的账号和所有数据，无法恢复！\n\n确定要继续吗？')) return;
         var password = prompt('请输入密码确认注销：');
         if (password === null) return;
 

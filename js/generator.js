@@ -249,13 +249,26 @@ MCGA.Generator = (function() {
         }
     }
     
+    function init() {
+        try {
+            var aiSettings = MCGA.Core.AIParser ? MCGA.Core.AIParser.loadAISettings() : { enabled: false };
+            var hintEl = document.getElementById('ai-status-hint');
+            if (hintEl) {
+                hintEl.style.display = aiSettings.enabled ? 'block' : 'none';
+            }
+        } catch (e) {
+            console.error('Generator init error:', e);
+        }
+    }
+
     return {
         startGeneration: startGeneration,
         cancelGeneration: cancelGeneration,
         filterLog: filterLog,
         validateModId: validateModId,
         showTemplateLibrary: showTemplateLibrary,
-        applyTemplate: applyTemplate
+        applyTemplate: applyTemplate,
+        init: init
     };
 })();
 

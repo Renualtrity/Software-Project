@@ -112,7 +112,34 @@ MCGA.Launcher = (function() {
             MCGA.showNotification('请先选择目标游戏版本', 'warning');
             return;
         }
-        MCGA.showNotification('快速安装功能开发中，请先到模组管理或模组市场选择模组安装', 'info');
+
+        var downloadedMods = MCGA.Core.ModMarket ? MCGA.Core.ModMarket.getDownloadedMods() : [];
+        if (downloadedMods.length === 0) {
+            MCGA.showNotification('当前没有已下载的模组，请先到模组市场下载模组', 'info');
+            showPage('market');
+            return;
+        }
+
+        MCGA.showNotification('正在安装模组到游戏实例...', 'info');
+
+        setTimeout(function() {
+            var successCount = 0;
+            var failCount = 0;
+            for (var i = 0; i < downloadedMods.length; i++) {
+                var result = MCGA.Core.Launcher.installModToInstance(downloadedMods[i], selectedInstance);
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            }
+
+            if (successCount > 0) {
+                MCGA.showNotification('安装完成：成功 ' + successCount + ' 个，失败 ' + failCount + ' 个', 'success');
+            } else {
+                MCGA.showNotification('安装失败，所有模组均无法安装', 'error');
+            }
+        }, 800);
     }
 
     return {

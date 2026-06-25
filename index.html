@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCGA Pro - Minecraft AI 模组生成系统</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/minecraft-theme.css">
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()">🎮 MC风格</button>
     <div class="app-container">
         <aside class="sidebar">
             <div class="logo">
@@ -146,6 +148,9 @@
                                 需求描述
                                 <span class="template-hint" onclick="showTemplateLibrary()">📋 需求模板库</span>
                             </label>
+                            <div id="ai-status-hint" style="font-size:12px;color:#888;margin-bottom:6px;display:none;">
+                                🤖 <strong>AI模式已启用</strong>：DeepSeek/GLM 将自动解析你的需求并设计方块、物品和配方
+                            </div>
                             <textarea id="mod-description" rows="8" placeholder="用自然语言描述你想要的模组功能，例如：&#10;新增一个发光方块，亮度等级14，四个角放萤石粉合成，可以照亮黑暗区域并防止刷怪，放在副手对亡灵生物造成伤害"></textarea>
                         </div>
                         <button id="btn-start-gen" class="btn-primary" onclick="startGeneration()">
@@ -305,7 +310,56 @@
                             <select id="setting-theme" onchange="applyTheme();saveSettings()">
                                 <option value="dark">深色主题</option>
                                 <option value="light">浅色主题</option>
+                                <option value="minecraft">MC风格</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>🤖 AI 配置</h3>
+                        <div class="setting-item">
+                            <label>启用 AI 生成</label>
+                            <div class="toggle-wrap">
+                                <input type="checkbox" id="ai-enabled" onchange="saveAIConfig()">
+                                <span class="toggle-label">使用 DeepSeek / GLM 等大模型解析需求</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>AI 服务商</label>
+                            <select id="ai-provider" onchange="onAIProviderChange();saveAIConfig()">
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="zhipu">智谱 GLM</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="siliconflow">硅基流动</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>API Key</label>
+                            <input type="password" id="ai-api-key" oninput="saveAIConfig()" placeholder="sk-xxxxxxxxxxxxxxxx">
+                        </div>
+                        <div class="setting-item" id="ai-api-url-wrap" style="display:none;">
+                            <label>API 地址</label>
+                            <input type="text" id="ai-api-url" oninput="saveAIConfig()" placeholder="https://api.example.com/v1/chat/completions">
+                        </div>
+                        <div class="setting-item">
+                            <label>模型</label>
+                            <select id="ai-model" onchange="saveAIConfig()">
+                                <option value="deepseek-chat">deepseek-chat</option>
+                                <option value="deepseek-coder">deepseek-coder</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>温度 (Temperature)</label>
+                            <div style="display:flex;align-items:center;gap:10px;min-width:150px;">
+                                <input type="range" id="ai-temperature" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('ai-temp-val').textContent=this.value;saveAIConfig()">
+                                <span id="ai-temp-val" style="font-size:14px;color:var(--text-primary);min-width:28px;">0.7</span>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <p style="font-size:12px;color:#888;margin-top:8px;">
+                                💡 API Key 仅保存在本地浏览器中，不会上传到任何服务器。<br>
+                                支持 OpenAI 兼容格式的 API，包括 DeepSeek、GLM、硅基流动等。
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -625,13 +679,14 @@
     </div>
 
     <script src="core/index.js"></script>
+    <script src="core/aiParser.js"></script>
     <script src="core/modParser.js"></script>
     <script src="core/codeGenerator.js"></script>
     <script src="core/buildEngine.js"></script>
     <script src="core/modValidator.js"></script>
     <script src="core/modUtils.js"></script>
-    <script src="core/modMarket.js"></script>
-    <script src="core/modpacks.js"></script>
+    <script src="core/modMarket.js?v=5"></script>
+    <script src="core/modpacks.js?v=5"></script>
     <script src="core/launcher.js"></script>
     <script src="core/profile.js"></script>
     <script src="core/help.js"></script>

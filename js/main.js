@@ -24,6 +24,9 @@ var MCGA = MCGA || {};
             if (pageName === 'dashboard' && typeof MCGA.refreshDashboard === 'function') {
                 MCGA.refreshDashboard();
             }
+            if (pageName === 'generator' && typeof MCGA.Generator !== 'undefined' && typeof MCGA.Generator.init === 'function') {
+                MCGA.Generator.init();
+            }
             if (pageName === 'mods' && typeof MCGA.loadMods === 'function') {
                 MCGA.loadMods();
             }
@@ -84,10 +87,19 @@ var MCGA = MCGA || {};
 
     MCGA.applyTheme = function(theme) {
         try {
+            document.body.classList.remove('light-theme', 'minecraft-theme');
             if (theme === 'light') {
                 document.body.classList.add('light-theme');
-            } else {
-                document.body.classList.remove('light-theme');
+            } else if (theme === 'minecraft') {
+                document.body.classList.add('minecraft-theme');
+            }
+            var toggleBtn = document.querySelector('.theme-toggle');
+            if (toggleBtn) {
+                if (theme === 'minecraft') {
+                    toggleBtn.textContent = '🌙 默认风格';
+                } else {
+                    toggleBtn.textContent = '🎮 MC风格';
+                }
             }
         } catch (e) {
             console.error('applyTheme error:', e);
@@ -99,6 +111,10 @@ var MCGA = MCGA || {};
             var settings = MCGA.Settings && MCGA.Settings.load ? MCGA.Settings.load() : {};
             if (settings.theme) {
                 MCGA.applyTheme(settings.theme);
+            }
+            var themeSelect = document.getElementById('setting-theme');
+            if (themeSelect) {
+                themeSelect.value = settings.theme || 'dark';
             }
             MCGA.showPage('dashboard');
         } catch (e) {
@@ -125,5 +141,25 @@ function applyTheme() {
     var themeSelect = document.getElementById('setting-theme');
     if (themeSelect) {
         MCGA.applyTheme(themeSelect.value);
+        if (MCGA.Settings && MCGA.Settings.save) {
+            var settings = MCGA.Settings.load() || {};
+            settings.theme = themeSelect.value;
+            MCGA.Settings.save(settings);
+        }
+    }
+}
+
+function toggleTheme() {
+    var isMinecraft = document.body.classList.contains('minecraft-theme');
+    var newTheme = isMinecraft ? 'dark' : 'minecraft';
+    MCGA.applyTheme(newTheme);
+    var themeSelect = document.getElementById('setting-theme');
+    if (themeSelect) {
+        themeSelect.value = newTheme;
+    }
+    if (MCGA.Settings && MCGA.Settings.save) {
+        var settings = MCGA.Settings.load() || {};
+        settings.theme = newTheme;
+        MCGA.Settings.save(settings);
     }
 }

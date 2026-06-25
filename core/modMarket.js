@@ -2,299 +2,279 @@ var MCGA = MCGA || {};
 MCGA.Core = MCGA.Core || {};
 
 MCGA.Core.ModMarket = (function() {
-    var STORAGE_KEY = 'mcga_market_downloads';
-    var FAVORITES_KEY = 'mcga_market_favorites';
+    var STORAGE_KEY = 'mcga_downloaded_mods';
+    var FAVORITE_KEY = 'mcga_favorite_mods';
+    var DOWNLOAD_HISTORY_KEY = 'mcga_download_history';
+    var API_BASE = 'https://api.modrinth.com/v2';
 
     var CATEGORIES = {
         technology: { name: '科技', icon: '⚙️' },
         magic: { name: '魔法', icon: '✨' },
         adventure: { name: '冒险', icon: '🗺️' },
-        decoration: { name: '装饰', icon: '🏠' },
-        utility: { name: '工具辅助', icon: '🔧' },
-        food: { name: '食物农业', icon: '🌾' },
+        decoration: { name: '装饰', icon: '🎨' },
+        utility: { name: '实用', icon: '🔧' },
+        performance: { name: '性能', icon: '⚡' },
+        library: { name: '库', icon: '📚' },
         worldgen: { name: '世界生成', icon: '🌍' },
-        storage: { name: '存储管理', icon: '📦' }
+        social: { name: '社交', icon: '👥' },
+        gameplay: { name: '游戏玩法', icon: '🎮' }
     };
 
-    var mockMods = [
-        {
-            id: 'market_001',
-            modId: 'industrialcraft',
-            modName: '工业时代 2',
-            author: 'IC2 Team',
-            version: '2.8.221',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'technology',
-            downloads: 12580000,
-            rating: 4.8,
-            icon: '⚙️',
-            description: '经典的科技类模组，添加了大量的机器、能源系统和自动化设备。',
-            tags: ['科技', '能源', '自动化'],
-            updatedAt: '2024-01-15',
-            size: '4.2 MB'
-        },
-        {
-            id: 'market_002',
-            modId: 'thaumcraft',
-            modName: '神秘时代 6',
-            author: 'Azanor',
-            version: '6.1.BETA26',
-            mcVersion: '1.12.2',
-            loader: 'forge',
-            category: 'magic',
-            downloads: 8920000,
-            rating: 4.9,
-            icon: '✨',
-            description: '探索神秘的魔法世界，研究奥术、炼金和傀儡术。',
-            tags: ['魔法', '探索', '炼金'],
-            updatedAt: '2023-12-20',
-            size: '6.8 MB'
-        },
-        {
-            id: 'market_003',
-            modId: 'twilightforest',
-            modName: '暮色森林',
-            author: 'Benimatic',
-            version: '4.2.1.1654',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'adventure',
-            downloads: 32450000,
-            rating: 4.9,
-            icon: '🌲',
-            description: '进入暮色森林维度，探索神秘的生物群落和强大的Boss。',
-            tags: ['维度', '冒险', 'Boss'],
-            updatedAt: '2024-01-10',
-            size: '8.5 MB'
-        },
-        {
-            id: 'market_004',
-            modId: 'chisel',
-            modName: '凿子',
-            author: 'tterrag',
-            version: '4.0.3',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'decoration',
-            downloads: 15680000,
-            rating: 4.7,
-            icon: '🔨',
-            description: '添加了大量装饰性方块，让你的建筑更加精美。',
-            tags: ['装饰', '建筑', '方块'],
-            updatedAt: '2024-01-05',
-            size: '2.1 MB'
-        },
-        {
-            id: 'market_005',
-            modId: 'jei',
-            modName: 'JEI 物品管理器',
-            author: 'mezz',
-            version: '15.3.0.30',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'utility',
-            downloads: 89500000,
-            rating: 4.9,
-            icon: '📖',
-            description: 'Just Enough Items - 查看物品合成配方和用途的必备工具。',
-            tags: ['工具', '合成', '查询'],
-            updatedAt: '2024-01-18',
-            size: '1.8 MB'
-        },
-        {
-            id: 'market_006',
-            modId: 'pamhc2',
-            modName: 'Pam 丰收物语 2',
-            author: 'Pam',
-            version: '1.0.0',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'food',
-            downloads: 7820000,
-            rating: 4.6,
-            icon: '🍎',
-            description: '添加了大量新的农作物、食物和烹饪系统。',
-            tags: ['食物', '农业', '烹饪'],
-            updatedAt: '2023-12-28',
-            size: '3.5 MB'
-        },
-        {
-            id: 'market_007',
-            modId: 'biomesoplenty',
-            modName: '超多生物群系',
-            author: 'Forstride',
-            version: '18.0.0.31',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'worldgen',
-            downloads: 45620000,
-            rating: 4.8,
-            icon: '🌴',
-            description: '为 Minecraft 添加了超过 50 种新的生物群系。',
-            tags: ['生物群系', '世界生成', '探索'],
-            updatedAt: '2024-01-12',
-            size: '5.2 MB'
-        },
-        {
-            id: 'market_008',
-            modId: 'ironchest',
-            modName: '铁箱子',
-            author: 'cpw',
-            version: '14.2.0',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'storage',
-            downloads: 28900000,
-            rating: 4.7,
-            icon: '🗄️',
-            description: '更大更好的箱子！从铁箱子到水晶箱子，各种材质任你选择。',
-            tags: ['存储', '箱子', '升级'],
-            updatedAt: '2024-01-08',
-            size: '0.9 MB'
-        },
-        {
-            id: 'market_009',
-            modId: 'ae2',
-            modName: '应用能源 2',
-            author: 'AlgorithmX2',
-            version: '15.0.9',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'storage',
-            downloads: 21340000,
-            rating: 4.8,
-            icon: '💾',
-            description: '基于物质能量的高级存储系统和自动化网络。',
-            tags: ['存储', '自动化', '网络'],
-            updatedAt: '2024-01-16',
-            size: '7.3 MB'
-        },
-        {
-            id: 'market_010',
-            modId: 'botania',
-            modName: '植物魔法',
-            author: 'Vazkii',
-            version: '443',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'magic',
-            downloads: 18760000,
-            rating: 4.9,
-            icon: '🌸',
-            description: '以植物为基础的魔法模组，用花朵产生魔力。',
-            tags: ['魔法', '植物', '自动化'],
-            updatedAt: '2024-01-14',
-            size: '5.6 MB'
-        },
-        {
-            id: 'market_011',
-            modId: 'create',
-            modName: '机械动力',
-            author: 'simibubi',
-            version: '0.5.1.f',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'technology',
-            downloads: 35200000,
-            rating: 4.9,
-            icon: '⚙️',
-            description: '基于旋转动力的机械系统，建造精美的机器和装置。',
-            tags: ['科技', '机械', '建筑'],
-            updatedAt: '2024-01-17',
-            size: '9.1 MB'
-        },
-        {
-            id: 'market_012',
-            modId: 'quark',
-            modName: '夸克',
-            author: 'Vazkii',
-            version: '4.0.421',
-            mcVersion: '1.20.1',
-            loader: 'forge',
-            category: 'utility',
-            downloads: 16580000,
-            rating: 4.8,
-            icon: '🔷',
-            description: '模块化的模组，添加了大量小而精的功能。',
-            tags: ['工具', '优化', '功能'],
-            updatedAt: '2024-01-11',
-            size: '4.0 MB'
-        }
-    ];
+    function getFetchOptions() {
+        return {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'MCGA-Pro/2.0.0 (https://github.com/Renualtrity/Software-project)'
+            }
+        };
+    }
 
     function getCategories() {
         return CATEGORIES;
     }
 
-    function getAllMods() {
-        return mockMods.slice();
-    }
-
-    function getModById(modId) {
-        for (var i = 0; i < mockMods.length; i++) {
-            if (mockMods[i].id === modId || mockMods[i].modId === modId) {
-                return mockMods[i];
-            }
+    function buildFacets(projectType, filters) {
+        var facets = [
+            ["project_type:" + projectType]
+        ];
+        if (filters && filters.category) {
+            facets.push(["categories:" + filters.category]);
         }
-        return null;
+        if (filters && filters.loader) {
+            facets.push(["loaders:" + filters.loader]);
+        }
+        if (filters && filters.mcVersion) {
+            facets.push(["versions:" + filters.mcVersion]);
+        }
+        return encodeURIComponent(JSON.stringify(facets));
     }
 
-    function searchMods(keyword, filters) {
-        var mods = getAllMods();
-        keyword = (keyword || '').toLowerCase();
-        filters = filters || {};
+    function convertModrinthHit(hit) {
+        return {
+            id: hit.project_id,
+            modId: hit.slug,
+            modName: hit.title,
+            author: hit.author || '',
+            version: hit.latest_version || '',
+            mcVersion: hit.game_versions && hit.game_versions[0] ? hit.game_versions[0] : '',
+            loader: hit.loaders && hit.loaders[0] ? hit.loaders[0] : 'fabric',
+            category: hit.categories && hit.categories[0] ? hit.categories[0] : 'utility',
+            downloads: hit.downloads || 0,
+            rating: hit.follows ? Math.min(Math.round(hit.downloads / hit.follows * 2) / 2 + 3, 5) : 0,
+            icon: hit.icon_url,
+            description: hit.description || '',
+            tags: hit.categories || [],
+            updatedAt: hit.date_modified ? hit.date_modified.split('T')[0] : '',
+            createdAt: hit.date_created ? hit.date_created.split('T')[0] : '',
+            pageUrl: hit.page_url,
+            follows: hit.follows || 0
+        };
+    }
 
-        return mods.filter(function(mod) {
-            if (keyword) {
-                var match = false;
-                if (mod.modId && mod.modId.toLowerCase().indexOf(keyword) !== -1) match = true;
-                if (mod.modName && mod.modName.toLowerCase().indexOf(keyword) !== -1) match = true;
-                if (mod.description && mod.description.toLowerCase().indexOf(keyword) !== -1) match = true;
-                if (mod.author && mod.author.toLowerCase().indexOf(keyword) !== -1) match = true;
-                if (mod.tags) {
-                    for (var i = 0; i < mod.tags.length; i++) {
-                        if (mod.tags[i].toLowerCase().indexOf(keyword) !== -1) {
-                            match = true;
-                            break;
-                        }
-                    }
+    function convertModrinthProject(project) {
+        var authors = project.authors ? project.authors.map(function(a) { return a.name; }).join(', ') : '';
+        return {
+            id: project.id,
+            modId: project.slug,
+            modName: project.title,
+            author: authors,
+            version: project.version || '',
+            mcVersion: project.game_versions && project.game_versions.length > 0 ? project.game_versions[project.game_versions.length - 1] : '',
+            loader: project.loaders && project.loaders[0] ? project.loaders[0] : 'fabric',
+            category: project.categories && project.categories[0] ? project.categories[0] : 'utility',
+            downloads: project.downloads || 0,
+            rating: project.follows ? Math.min(Math.round(project.downloads / project.follows * 2) / 2 + 3, 5) : 0,
+            icon: project.icon_url,
+            description: project.description || '',
+            body: project.body || '',
+            tags: project.categories || [],
+            updatedAt: project.date_modified ? project.date_modified.split('T')[0] : '',
+            createdAt: project.date_created ? project.date_created.split('T')[0] : '',
+            pageUrl: 'https://modrinth.com/mod/' + project.slug,
+            follows: project.follows || 0,
+            categories: project.categories || [],
+            loaders: project.loaders || [],
+            gameVersions: project.game_versions || []
+        };
+    }
+
+    function searchMods(keyword, filters, offset, callback) {
+        if (typeof offset === 'function') {
+            callback = offset;
+            offset = 0;
+        }
+        offset = offset || 0;
+
+        var url = API_BASE + '/search?facets=' + buildFacets('mod', filters);
+        if (keyword) {
+            url += '&query=' + encodeURIComponent(keyword);
+        }
+        url += '&limit=40&offset=' + offset + '&index=downloads';
+
+        console.log('Modrinth Search URL:', url);
+
+        fetch(url, getFetchOptions())
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('API request failed (status: ' + response.status + ')');
                 }
-                if (!match) return false;
+                return response.json();
+            })
+            .then(function(data) {
+                var mods = (data.hits || []).map(convertModrinthHit);
+                console.log('Found mods:', mods.length, '/ total:', data.total_hits);
+                callback(null, mods, {
+                    total: data.total_hits || 0,
+                    offset: offset,
+                    limit: 40
+                });
+            })
+            .catch(function(error) {
+                console.error('Modrinth API error:', error);
+                callback(error, [], { total: 0, offset: offset, limit: 40 });
+            });
+    }
+
+    function getModById(modId, callback) {
+        fetch(API_BASE + '/project/' + modId, getFetchOptions())
+            .then(function(response) {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        return callback(null, null);
+                    }
+                    throw new Error('API request failed (status: ' + response.status + ')');
+                }
+                return response.json();
+            })
+            .then(function(project) {
+                var mod = convertModrinthProject(project);
+                loadVersionsForMod(mod, function(err) {
+                    callback(err, mod);
+                });
+            })
+            .catch(function(error) {
+                console.error('Modrinth API error:', error);
+                callback(error, null);
+            });
+    }
+
+    function loadVersionsForMod(mod, callback) {
+        fetch(API_BASE + '/project/' + mod.id + '/version', getFetchOptions())
+            .then(function(response) {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        mod.versions = [];
+                        mod.latestVersion = null;
+                        callback(null);
+                        return;
+                    }
+                    throw new Error('API request failed (status: ' + response.status + ')');
+                }
+                return response.json();
+            })
+            .then(function(versions) {
+                if (!versions || versions.length === 0) {
+                    mod.versions = [];
+                    mod.latestVersion = null;
+                    callback(null);
+                    return;
+                }
+
+                mod.versions = versions.slice(0, 5).map(function(v) {
+                    return {
+                        id: v.id,
+                        name: v.name,
+                        versionNumber: v.version_number,
+                        gameVersions: v.game_versions || [],
+                        loaders: v.loaders || [],
+                        datePublished: v.date_published ? v.date_published.split('T')[0] : '',
+                        files: v.files ? v.files.map(function(f) {
+                            return {
+                                id: f.id,
+                                filename: f.filename,
+                                url: f.url,
+                                size: f.size || 0,
+                                primary: f.primary || false
+                            };
+                        }) : [],
+                        changelog: v.changelog || '',
+                        dependencies: v.dependencies || []
+                    };
+                });
+
+                if (mod.versions.length > 0) {
+                    mod.latestVersion = mod.versions[0];
+                }
+
+                console.log('Loaded versions:', mod.versions.length);
+                callback(null);
+            })
+            .catch(function(error) {
+                console.error('Modrinth API error:', error);
+                mod.versions = [];
+                mod.latestVersion = null;
+                callback(null);
+            });
+    }
+
+    function downloadMod(modId, versionId, callback) {
+        getModById(modId, function(err, mod) {
+            if (err || !mod) {
+                callback(err || new Error('Mod not found'), null);
+                return;
             }
-            if (filters.category && mod.category !== filters.category) return false;
-            if (filters.mcVersion && mod.mcVersion !== filters.mcVersion) return false;
-            if (filters.loader && mod.loader !== filters.loader) return false;
-            return true;
+
+            var versionToDownload = null;
+            if (versionId && mod.versions) {
+                versionToDownload = mod.versions.find(function(v) { return v.id === versionId; });
+            } else {
+                versionToDownload = mod.latestVersion;
+            }
+
+            if (!versionToDownload || !versionToDownload.files || versionToDownload.files.length === 0) {
+                callback(new Error('No files found for download'), null);
+                return;
+            }
+
+            var file = versionToDownload.files.find(function(f) { return f.primary; }) || versionToDownload.files[0];
+            downloadFile(file.url, file.filename, callback);
         });
     }
 
-    function sortMods(mods, sortBy) {
-        var sorted = mods.slice();
-        switch (sortBy) {
-            case 'new':
-                sorted.sort(function(a, b) {
-                    return new Date(b.updatedAt) - new Date(a.updatedAt);
-                });
-                break;
-            case 'downloads':
-                sorted.sort(function(a, b) {
-                    return b.downloads - a.downloads;
-                });
-                break;
-            case 'rating':
-                sorted.sort(function(a, b) {
-                    return b.rating - a.rating;
-                });
-                break;
-            case 'hot':
-            default:
-                sorted.sort(function(a, b) {
-                    return (b.downloads * b.rating) - (a.downloads * a.rating);
-                });
-                break;
-        }
-        return sorted;
+    function downloadFile(url, filename, callback) {
+        var proxyUrl = '/api/download?url=' + encodeURIComponent(url) + '&filename=' + encodeURIComponent(filename);
+        
+        console.log('Download URL:', proxyUrl);
+        
+        fetch(proxyUrl)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Download failed (status: ' + response.status + ')');
+                return response.blob();
+            })
+            .then(function(blob) {
+                console.log('Downloaded blob size:', blob.size);
+                
+                var downloadUrl = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+                var fileInfo = {
+                    url: url,
+                    filename: filename,
+                    size: blob.size,
+                    downloadedAt: Date.now()
+                };
+                callback(null, fileInfo);
+            })
+            .catch(function(error) {
+                console.error('Download error:', error);
+                callback(error, null);
+            });
     }
 
     function getDownloadedMods() {
@@ -306,99 +286,99 @@ MCGA.Core.ModMarket = (function() {
     }
 
     function isDownloaded(modId) {
-        var downloaded = getDownloadedMods();
-        for (var i = 0; i < downloaded.length; i++) {
-            if (downloaded[i].id === modId || downloaded[i].modId === modId) {
-                return true;
-            }
-        }
-        return false;
+        var mods = getDownloadedMods();
+        return mods.some(function(m) { return m.id === modId; });
     }
 
-    function downloadMod(modData) {
+    function recordDownload(mod) {
         var downloaded = getDownloadedMods();
-        var modRecord = Object.assign({}, modData, {
-            downloadedAt: Date.now(),
-            downloadStatus: 'completed'
-        });
-        downloaded.unshift(modRecord);
-        try {
+        if (!downloaded.some(function(m) { return m.id === mod.id; })) {
+            downloaded.push({
+                id: mod.id,
+                name: mod.modName || mod.name,
+                author: mod.author,
+                version: mod.latestVersion ? mod.latestVersion.versionNumber : '',
+                downloadedAt: Date.now()
+            });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(downloaded));
-        } catch (e) {}
-        return modRecord;
+        }
+        addDownloadHistory(mod);
     }
 
-    function getFavorites() {
+    function getFavoriteMods() {
         try {
-            return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+            return JSON.parse(localStorage.getItem(FAVORITE_KEY) || '[]');
         } catch (e) {
             return [];
         }
     }
 
     function isFavorite(modId) {
-        var favorites = getFavorites();
-        for (var i = 0; i < favorites.length; i++) {
-            if (favorites[i].id === modId || favorites[i].modId === modId) {
-                return true;
-            }
-        }
-        return false;
+        var favs = getFavoriteMods();
+        return favs.some(function(f) { return f.id === modId; });
     }
 
-    function toggleFavorite(modData) {
-        var favorites = getFavorites();
-        var exists = false;
-        var newFavorites = [];
-        for (var i = 0; i < favorites.length; i++) {
-            if (favorites[i].id === modData.id) {
-                exists = true;
-            } else {
-                newFavorites.push(favorites[i]);
-            }
+    function toggleFavorite(mod) {
+        var favs = getFavoriteMods();
+        var index = favs.findIndex(function(f) { return f.id === mod.id; });
+        
+        if (index >= 0) {
+            favs.splice(index, 1);
+            localStorage.setItem(FAVORITE_KEY, JSON.stringify(favs));
+            return false;
+        } else {
+            favs.push({
+                id: mod.id,
+                name: mod.modName || mod.name,
+                icon: mod.icon,
+                addedAt: Date.now()
+            });
+            localStorage.setItem(FAVORITE_KEY, JSON.stringify(favs));
+            return true;
         }
+    }
+
+    function addDownloadHistory(mod) {
+        var history = JSON.parse(localStorage.getItem(DOWNLOAD_HISTORY_KEY) || '[]');
+        var exists = history.some(function(h) { return h.id === mod.id; });
         if (!exists) {
-            newFavorites.unshift(modData);
+            history.unshift({
+                id: mod.id,
+                name: mod.modName || mod.name,
+                type: 'mod',
+                downloadedAt: Date.now()
+            });
+            if (history.length > 50) history.pop();
+            localStorage.setItem(DOWNLOAD_HISTORY_KEY, JSON.stringify(history));
         }
-        try {
-            localStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
-        } catch (e) {}
-        return !exists;
     }
 
-    function removeFromDownloads(modId) {
-        var downloaded = getDownloadedMods();
-        var newDownloads = downloaded.filter(function(m) {
-            return m.id !== modId && m.modId !== modId;
-        });
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newDownloads));
-        } catch (e) {}
-        return newDownloads.length !== downloaded.length;
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
     }
 
-    function formatDownloads(count) {
-        if (count >= 10000000) {
-            return (count / 10000000).toFixed(1) + '千万';
-        } else if (count >= 10000) {
-            return (count / 10000).toFixed(1) + '万';
-        }
-        return count.toString();
+    function formatDownloads(num) {
+        if (num < 1000) return num;
+        if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+        return (num / 1000000).toFixed(1) + 'M';
     }
 
     return {
         getCategories: getCategories,
-        getAllMods: getAllMods,
-        getModById: getModById,
         searchMods: searchMods,
-        sortMods: sortMods,
+        getModById: getModById,
+        downloadMod: downloadMod,
         getDownloadedMods: getDownloadedMods,
         isDownloaded: isDownloaded,
-        downloadMod: downloadMod,
-        getFavorites: getFavorites,
+        recordDownload: recordDownload,
+        getFavoriteMods: getFavoriteMods,
         isFavorite: isFavorite,
         toggleFavorite: toggleFavorite,
-        removeFromDownloads: removeFromDownloads,
+        addDownloadHistory: addDownloadHistory,
+        formatSize: formatSize,
         formatDownloads: formatDownloads
     };
 })();

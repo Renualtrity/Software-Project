@@ -229,22 +229,20 @@ MCGA.Core = MCGA.Core || {};
     function getStepFunction(stepName) {
         var map = {
             parse: function(task, callback) {
-                if (MCGA.Core.ModParser && MCGA.Core.ModParser.parseRequirement) {
-                    MCGA.Core.ModParser.parseRequirement(task.config, task.userInput, callback);
-                } else {
-                    callback(null, {
-                        modId: task.config.modId,
-                        modName: task.config.modName || task.config.modId,
-                        version: task.config.modVersion || '1.0.0',
-                        mcVersion: task.config.mcVersion,
-                        loader: task.config.loader,
-                        author: task.config.author || 'MCGA',
-                        description: task.userInput || '由 MCGA Pro 生成的模组',
-                        features: [],
-                        blocks: [],
-                        items: [],
-                        recipes: []
+                var aiSettings = MCGA.Core.AIParser ? MCGA.Core.AIParser.loadAISettings() : { enabled: false };
+                if (aiSettings.enabled && MCGA.Core.AIParser && MCGA.Core.AIParser.parseWithAI) {
+                    addLog(task.id, '正在使用AI解析需求...', 'info');
+                    MCGA.Core.AIParser.parseWithAI(task.config, task.userInput, function(err, modData) {
+                        if (err) {
+                            addLog(task.id, 'AI解析失败: ' + err.message + '，回退到本地解析', 'warning');
+                            fallbackParse(task, callback);
+                        } else {
+                            addLog(task.id, 'AI解析成功，设计了 ' + (modData.blocks ? modData.blocks.length : 0) + ' 个方块, ' + (modData.items ? modData.items.length : 0) + ' 个物品, ' + (modData.recipes ? modData.recipes.length : 0) + ' 个配方', 'success');
+                            callback(null, modData);
+                        }
                     });
+                } else {
+                    fallbackParse(task, callback);
                 }
             },
             generate: function(task, callback) {
@@ -282,6 +280,26 @@ MCGA.Core = MCGA.Core || {};
             }
         };
         return map[stepName];
+    }
+
+    function fallbackParse(task, callback) {
+        if (MCGA.Core.ModParser && MCGA.Core.ModParser.parseRequirement) {
+            MCGA.Core.ModParser.parseRequirement(task.config, task.userInput, callback);
+        } else {
+            callback(null, {
+                modId: task.config.modId,
+                modName: task.config.modName || task.config.modId,
+                version: task.config.modVersion || '1.0.0',
+                mcVersion: task.config.mcVersion,
+                loader: task.config.loader,
+                author: task.config.author || 'MCGA',
+                description: task.userInput || '由 MCGA Pro 生成的模组',
+                features: [],
+                blocks: [],
+                items: [],
+                recipes: []
+            });
+        }
     }
 
     function saveTaskToHistory(task) {
