@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCGA Pro - Minecraft AI 模组生成系统</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>MCGA Pro</h1>
+                <p>Minecraft AI 模组生成系统</p>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+                    <span class="nav-icon">🏠</span>
+                    <span>工作台</span>
+                </div>
+                <div class="nav-item" data-page="generator" onclick="showPage('generator')">
+                    <span class="nav-icon">⚡</span>
+                    <span>模组生成器</span>
+                </div>
+                <div class="nav-item" data-page="mods" onclick="showPage('mods')">
+                    <span class="nav-icon">📦</span>
+                    <span>模组管理</span>
+                </div>
+                <div class="nav-item" data-page="market" onclick="showPage('market')">
+                    <span class="nav-icon">🌐</span>
+                    <span>模组市场</span>
+                </div>
+                <div class="nav-item" data-page="modpacks" onclick="showPage('modpacks')">
+                    <span class="nav-icon">📚</span>
+                    <span>整合包</span>
+                </div>
+                <div class="nav-item" data-page="launcher" onclick="showPage('launcher')">
+                    <span class="nav-icon">🎮</span>
+                    <span>启动器适配</span>
+                </div>
+                <div class="nav-item" data-page="tools" onclick="showPage('tools')">
+                    <span class="nav-icon">🔧</span>
+                    <span>工具箱</span>
+                </div>
+                <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+                    <span class="nav-icon">⚙️</span>
+                    <span>设置</span>
+                </div>
+                <div class="nav-divider"></div>
+                <div class="nav-item" data-page="profile" onclick="showPage('profile')">
+                    <span class="nav-icon">👤</span>
+                    <span>个人中心</span>
+                </div>
+                <div class="nav-item" data-page="help" onclick="showPage('help')">
+                    <span class="nav-icon">❓</span>
+                    <span>帮助与反馈</span>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <section id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <h2>工作台</h2>
+                    <p>欢迎使用 MCGA Pro，开始创建你的第一个模组</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">已生成模组</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-success">0</div>
+                            <div class="stat-label">构建成功</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-failed">0</div>
+                            <div class="stat-label">构建失败</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="recent-mods">
+                    <h3>最近生成</h3>
+                    <div id="recent-mods-list" class="mods-list">
+                        <p class="empty-tip">暂无生成记录，前往模组生成器创建第一个模组</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-generator" class="page">
+                <div class="page-header">
+                    <h2>模组生成器</h2>
+                    <p>用自然语言描述你想要的模组，AI 自动生成完整可运行的模组</p>
+                </div>
+                <div class="generator-container">
+                    <div class="generator-left">
+                        <div class="form-group">
+                            <label>模组名称 (Mod ID)</label>
+                            <input type="text" id="mod-id" placeholder="例如：mymod" oninput="validateModId(this.value)">
+                            <p class="hint" id="mod-id-hint">全小写字母、数字、下划线，2-32 个字符</p>
+                        </div>
+                        <div class="form-group">
+                            <label>模组显示名称</label>
+                            <input type="text" id="mod-name" placeholder="例如：我的模组">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>游戏版本</label>
+                                <select id="mc-version">
+                                    <option value="1.21.1">1.21.1</option>
+                                    <option value="1.21">1.21</option>
+                                    <option value="1.20.1">1.20.1</option>
+                                    <option value="1.20">1.20</option>
+                                    <option value="1.19.4">1.19.4</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>加载器</label>
+                                <select id="mod-loader">
+                                    <option value="forge">Forge</option>
+                                    <option value="neoforge">NeoForge</option>
+                                    <option value="fabric">Fabric</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>模组版本</label>
+                                <input type="text" id="mod-version" value="1.0.0">
+                            </div>
+                            <div class="form-group">
+                                <label>作者</label>
+                                <input type="text" id="mod-author" placeholder="你的名字">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                需求描述
+                                <span class="template-hint" onclick="showTemplateLibrary()">📋 需求模板库</span>
+                            </label>
+                            <textarea id="mod-description" rows="8" placeholder="用自然语言描述你想要的模组功能，例如：&#10;新增一个发光方块，亮度等级14，四个角放萤石粉合成，可以照亮黑暗区域并防止刷怪，放在副手对亡灵生物造成伤害"></textarea>
+                        </div>
+                        <button id="btn-start-gen" class="btn-primary" onclick="startGeneration()">
+                            🚀 开始生成
+                        </button>
+                    </div>
+                    <div class="generator-right">
+                        <div class="progress-panel">
+                            <h3>生成进度</h3>
+                            <div class="progress-steps">
+                                <div class="step" id="step-parse">
+                                    <div class="step-icon">📝</div>
+                                    <div class="step-info">
+                                        <div class="step-title">需求解析</div>
+                                        <div class="step-desc">分析需求，生成架构方案</div>
+                                    </div>
+                                </div>
+                                <div class="step" id="step-generate">
+                                    <div class="step-icon">💻</div>
+                                    <div class="step-info">
+                                        <div class="step-title">代码生成</div>
+                                        <div class="step-desc">生成模组源码与资源文件</div>
+                                    </div>
+                                </div>
+                                <div class="step" id="step-build">
+                                    <div class="step-icon">🔨</div>
+                                    <div class="step-info">
+                                        <div class="step-title">构建打包</div>
+                                        <div class="step-desc">执行 Gradle 构建与重映射</div>
+                                    </div>
+                                </div>
+                                <div class="step" id="step-validate">
+                                    <div class="step-icon">✅</div>
+                                    <div class="step-info">
+                                        <div class="step-title">成品校验</div>
+                                        <div class="step-desc">校验结构与运行风险</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="log-panel">
+                            <div class="log-header">
+                                <h3>构建日志</h3>
+                                <div class="log-filter">
+                                    <button class="filter-btn active" data-level="all" onclick="filterLog('all')">全部</button>
+                                    <button class="filter-btn" data-level="warn" onclick="filterLog('warn')">警告</button>
+                                    <button class="filter-btn" data-level="error" onclick="filterLog('error')">错误</button>
+                                </div>
+                            </div>
+                            <div id="log-output" class="log-output">
+                                <p class="log-empty">等待生成任务开始...</p>
+                            </div>
+                            <div class="log-actions" id="log-actions" style="display:none;">
+                                <button class="btn-secondary" id="btn-cancel" onclick="cancelGeneration()">取消生成</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-mods" class="page">
+                <div class="page-header">
+                    <h2>模组管理</h2>
+                    <p>管理所有已生成的模组</p>
+                </div>
+                <div class="mods-toolbar">
+                    <div class="search-box">
+                        <input type="text" id="mods-search" placeholder="搜索模组..." oninput="filterMods()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="filter-version" onchange="filterMods()">
+                            <option value="">全部版本</option>
+                            <option value="1.21.1">1.21.1</option>
+                            <option value="1.21">1.21</option>
+                            <option value="1.20.1">1.20.1</option>
+                            <option value="1.20">1.20</option>
+                        </select>
+                        <select id="filter-loader" onchange="filterMods()">
+                            <option value="">全部加载器</option>
+                            <option value="forge">Forge</option>
+                            <option value="neoforge">NeoForge</option>
+                            <option value="fabric">Fabric</option>
+                        </select>
+                    </div>
+                    <div class="batch-actions">
+                        <button class="btn-secondary" onclick="batchExport()">批量导出</button>
+                        <button class="btn-danger" onclick="batchDelete()">批量删除</button>
+                    </div>
+                </div>
+                <div id="mods-grid" class="mods-grid">
+                    <p class="empty-tip">暂无模组，前往模组生成器创建第一个模组</p>
+                </div>
+            </section>
+
+            <section id="page-tools" class="page">
+                <div class="page-header">
+                    <h2>工具箱</h2>
+                    <p>实用工具集合，提升模组开发效率</p>
+                </div>
+                <div class="tools-grid">
+                    <div class="tool-card" onclick="openCrashAnalyzer()">
+                        <div class="tool-icon">🐛</div>
+                        <h3>崩溃日志分析</h3>
+                        <p>粘贴崩溃日志，自动识别崩溃原因并给出修复方案</p>
+                    </div>
+                    <div class="tool-card" onclick="openRecipePreview()">
+                        <div class="tool-icon">🔧</div>
+                        <h3>合成配方预览</h3>
+                        <p>可视化工作台配方编辑器，实时预览合成效果</p>
+                    </div>
+                    <div class="tool-card" onclick="openModIdChecker()">
+                        <div class="tool-icon">🔍</div>
+                        <h3>Mod ID 冲突检测</h3>
+                        <p>检测模组 ID 冲突，避免游戏启动崩溃</p>
+                    </div>
+                    <div class="tool-card" onclick="openImportLocal()">
+                        <div class="tool-icon">📥</div>
+                        <h3>本地模组导入</h3>
+                        <p>导入本地 JAR 文件，纳入统一管理</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-settings" class="page">
+                <div class="page-header">
+                    <h2>设置</h2>
+                    <p>个性化配置与系统设置</p>
+                </div>
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <h3>生成偏好</h3>
+                        <div class="setting-item">
+                            <label>默认游戏版本</label>
+                            <select id="setting-default-version" onchange="saveSettings()">
+                                <option value="1.21.1">1.21.1</option>
+                                <option value="1.21">1.21</option>
+                                <option value="1.20.1">1.20.1</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>默认加载器</label>
+                            <select id="setting-default-loader" onchange="saveSettings()">
+                                <option value="forge">Forge</option>
+                                <option value="neoforge">NeoForge</option>
+                                <option value="fabric">Fabric</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>默认作者名</label>
+                            <input type="text" id="setting-author" oninput="saveSettings()" placeholder="默认作者名">
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>外观设置</h3>
+                        <div class="setting-item">
+                            <label>主题模式</label>
+                            <select id="setting-theme" onchange="applyTheme();saveSettings()">
+                                <option value="dark">深色主题</option>
+                                <option value="light">浅色主题</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-market" class="page">
+                <div class="page-header">
+                    <h2>模组市场</h2>
+                    <p>浏览并下载其他开发者分享的优质模组</p>
+                </div>
+                <div class="market-toolbar">
+                    <div class="search-box">
+                        <input type="text" id="market-search" placeholder="搜索模组..." oninput="filterMarketMods()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="market-category" onchange="filterMarketMods()">
+                            <option value="">全部分类</option>
+                            <option value="technology">科技</option>
+                            <option value="magic">魔法</option>
+                            <option value="adventure">冒险</option>
+                            <option value="decoration">装饰</option>
+                            <option value="utility">工具辅助</option>
+                            <option value="food">食物农业</option>
+                            <option value="worldgen">世界生成</option>
+                            <option value="storage">存储管理</option>
+                        </select>
+                        <select id="market-mc-version" onchange="filterMarketMods()">
+                            <option value="">全部版本</option>
+                            <option value="1.21.1">1.21.1</option>
+                            <option value="1.21">1.21</option>
+                            <option value="1.20.1">1.20.1</option>
+                            <option value="1.20">1.20</option>
+                            <option value="1.19.4">1.19.4</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="market-tabs">
+                    <button class="market-tab active" data-sort="hot" onclick="sortMarket('hot')">热门</button>
+                    <button class="market-tab" data-sort="new" onclick="sortMarket('new')">最新</button>
+                    <button class="market-tab" data-sort="downloads" onclick="sortMarket('downloads')">下载量</button>
+                    <button class="market-tab" data-sort="rating" onclick="sortMarket('rating')">评分</button>
+                </div>
+                <div id="market-grid" class="market-grid"></div>
+            </section>
+
+            <section id="page-modpacks" class="page">
+                <div class="page-header">
+                    <h2>整合包管理</h2>
+                    <p>浏览、下载和管理模组整合包</p>
+                </div>
+                <div class="modpacks-toolbar">
+                    <div class="search-box">
+                        <input type="text" id="modpacks-search" placeholder="搜索整合包..." oninput="filterModpacks()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="modpacks-category" onchange="filterModpacks()">
+                            <option value="">全部类型</option>
+                            <option value="tech">科技向</option>
+                            <option value="magic">魔法向</option>
+                            <option value="adventure">冒险向</option>
+                            <option value="hardcore">硬核向</option>
+                            <option value="lightweight">轻量优化</option>
+                            <option value="kitchensink">万能厨房</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="importModpack()">📥 导入整合包</button>
+                </div>
+                <div id="modpacks-grid" class="modpacks-grid"></div>
+            </section>
+
+            <section id="page-launcher" class="page">
+                <div class="page-header">
+                    <h2>启动器适配</h2>
+                    <p>管理启动器配置，一键安装模组到游戏</p>
+                </div>
+                <div class="launcher-container">
+                    <div class="launcher-section">
+                        <h3>已连接的启动器</h3>
+                        <div id="launcher-list" class="launcher-list">
+                            <div class="launcher-card" data-launcher="hmcl">
+                                <div class="launcher-icon">📦</div>
+                                <div class="launcher-info">
+                                    <div class="launcher-name">HMCL 启动器</div>
+                                    <div class="launcher-status disconnected">未连接</div>
+                                </div>
+                                <button class="btn-secondary" onclick="connectLauncher('hmcl')">连接</button>
+                            </div>
+                            <div class="launcher-card" data-launcher="pcl2">
+                                <div class="launcher-icon">🟢</div>
+                                <div class="launcher-info">
+                                    <div class="launcher-name">PCL2 启动器</div>
+                                    <div class="launcher-status disconnected">未连接</div>
+                                </div>
+                                <button class="btn-secondary" onclick="connectLauncher('pcl2')">连接</button>
+                            </div>
+                            <div class="launcher-card" data-launcher="bakatool">
+                                <div class="launcher-icon">🐱</div>
+                                <div class="launcher-info">
+                                    <div class="launcher-name">BakaTool</div>
+                                    <div class="launcher-status disconnected">未连接</div>
+                                </div>
+                                <button class="btn-secondary" onclick="connectLauncher('bakatool')">连接</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="launcher-section">
+                        <h3>游戏版本实例</h3>
+                        <div id="instance-list" class="instance-list">
+                            <p class="empty-tip">连接启动器后显示游戏版本实例</p>
+                        </div>
+                    </div>
+                    <div class="launcher-section">
+                        <h3>快速安装</h3>
+                        <div class="install-panel">
+                            <p class="install-desc">选择要安装的模组和目标游戏版本，一键安装到对应版本的 mods 文件夹。</p>
+                            <div class="install-actions">
+                                <button class="btn-primary" onclick="quickInstall()">🚀 快速安装模组</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-profile" class="page">
+                <div class="page-header">
+                    <h2>个人中心</h2>
+                    <p>管理你的账号和个人信息</p>
+                </div>
+                <div class="profile-container">
+                    <div class="profile-card">
+                        <div class="profile-avatar" id="profile-avatar">👤</div>
+                        <div class="profile-info">
+                            <div class="profile-name" id="profile-name">未登录</div>
+                            <div class="profile-email" id="profile-email">点击登录体验更多功能</div>
+                            <div class="profile-stats">
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" id="profile-mod-count">0</div>
+                                    <div class="profile-stat-label">已生成模组</div>
+                                </div>
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" id="profile-download-count">0</div>
+                                    <div class="profile-stat-label">下载次数</div>
+                                </div>
+                                <div class="profile-stat">
+                                    <div class="profile-stat-value" id="profile-fav-count">0</div>
+                                    <div class="profile-stat-label">收藏</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="profile-actions" id="profile-login-section">
+                            <button class="btn-primary" onclick="showLoginModal()">登录 / 注册</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3>账号与安全</h3>
+                            <div class="setting-item">
+                                <label>修改密码</label>
+                                <button class="btn-secondary" onclick="changePassword()" id="btn-change-pwd" disabled>修改</button>
+                            </div>
+                            <div class="setting-item">
+                                <label>绑定邮箱</label>
+                                <button class="btn-secondary" onclick="bindEmail()" id="btn-bind-email" disabled>绑定</button>
+                            </div>
+                            <div class="setting-item">
+                                <label>登录设备管理</label>
+                                <button class="btn-secondary" onclick="manageDevices()" id="btn-manage-devices" disabled>管理</button>
+                            </div>
+                            <div class="setting-item danger-setting">
+                                <label>注销账号</label>
+                                <button class="btn-danger" onclick="deleteAccount()" id="btn-delete-account" disabled>注销</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>我的收藏</h3>
+                            <div id="profile-favorites" class="profile-favorites">
+                                <p class="empty-tip">暂无收藏的模组</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>下载历史</h3>
+                            <div id="profile-downloads" class="profile-downloads">
+                                <p class="empty-tip">暂无下载记录</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="page-help" class="page">
+                <div class="page-header">
+                    <h2>帮助与反馈</h2>
+                    <p>常见问题解答与用户反馈</p>
+                </div>
+                <div class="help-container">
+                    <div class="help-tabs">
+                        <button class="help-tab active" data-tab="faq" onclick="switchHelpTab('faq')">📖 常见问题</button>
+                        <button class="help-tab" data-tab="tutorial" onclick="switchHelpTab('tutorial')">🎓 使用教程</button>
+                        <button class="help-tab" data-tab="feedback" onclick="switchHelpTab('feedback')">💬 意见反馈</button>
+                        <button class="help-tab" data-tab="about" onclick="switchHelpTab('about')">ℹ️ 关于我们</button>
+                    </div>
+
+                    <div id="help-faq" class="help-content active">
+                        <div class="faq-list" id="faq-list"></div>
+                    </div>
+
+                    <div id="help-tutorial" class="help-content">
+                        <div class="tutorial-list">
+                            <div class="tutorial-item">
+                                <div class="tutorial-icon">🚀</div>
+                                <div class="tutorial-content">
+                                    <h4>快速开始：生成你的第一个模组</h4>
+                                    <p>打开模组生成器，输入模组名称、选择游戏版本，用自然语言描述你想要的功能，点击"开始生成"即可。</p>
+                                </div>
+                            </div>
+                            <div class="tutorial-item">
+                                <div class="tutorial-icon">📦</div>
+                                <div class="tutorial-content">
+                                    <h4>如何安装模组到游戏</h4>
+                                    <p>生成成功后点击下载 JAR 文件，将文件放入 Minecraft 客户端的 mods 文件夹中。确保 Forge/Fabric 已正确安装。</p>
+                                </div>
+                            </div>
+                            <div class="tutorial-item">
+                                <div class="tutorial-icon">🐛</div>
+                                <div class="tutorial-content">
+                                    <h4>游戏崩溃了怎么办</h4>
+                                    <p>使用工具箱中的"崩溃日志分析"功能，粘贴崩溃日志即可自动识别原因并给出修复方案。</p>
+                                </div>
+                            </div>
+                            <div class="tutorial-item">
+                                <div class="tutorial-icon">🎮</div>
+                                <div class="tutorial-content">
+                                    <h4>连接启动器一键安装</h4>
+                                    <p>在"启动器适配"页面连接你的启动器，选择模组和目标版本，一键安装到对应版本的 mods 文件夹。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="help-feedback" class="help-content">
+                        <div class="feedback-form">
+                            <div class="form-group">
+                                <label>反馈类型</label>
+                                <select id="feedback-type">
+                                    <option value="bug">Bug 反馈</option>
+                                    <option value="feature">功能建议</option>
+                                    <option value="question">使用问题</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>标题</label>
+                                <input type="text" id="feedback-title" placeholder="简要描述你的问题或建议">
+                            </div>
+                            <div class="form-group">
+                                <label>详细描述</label>
+                                <textarea id="feedback-content" rows="6" placeholder="请详细描述遇到的问题或建议..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>联系方式（选填）</label>
+                                <input type="text" id="feedback-contact" placeholder="邮箱或其他联系方式">
+                            </div>
+                            <button class="btn-primary" onclick="submitFeedback()">📤 提交反馈</button>
+                        </div>
+                    </div>
+
+                    <div id="help-about" class="help-content">
+                        <div class="about-section">
+                            <h3>MCGA Pro</h3>
+                            <p>Minecraft AI 模组生成系统 - 用 AI 赋能模组开发，让每个人都能轻松创建属于自己的 Minecraft 模组。</p>
+                            <div class="about-info">
+                                <div class="about-item">
+                                    <span class="about-label">版本</span>
+                                    <span class="about-value">2.0.0</span>
+                                </div>
+                                <div class="about-item">
+                                    <span class="about-label">支持版本</span>
+                                    <span class="about-value">1.19.4 - 1.21.1</span>
+                                </div>
+                                <div class="about-item">
+                                    <span class="about-label">支持加载器</span>
+                                    <span class="about-value">Forge / NeoForge / Fabric</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="notification-container" class="notification-container"></div>
+
+    <div id="template-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>需求模板库</h3>
+                <button class="modal-close" onclick="closeModal('template-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="template-grid" id="template-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mod-detail-modal" class="modal" style="display:none;">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="detail-title">模组详情</h3>
+                <button class="modal-close" onclick="closeModal('mod-detail-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="detail-body"></div>
+        </div>
+    </div>
+
+    <script src="core/index.js"></script>
+    <script src="core/modParser.js"></script>
+    <script src="core/codeGenerator.js"></script>
+    <script src="core/buildEngine.js"></script>
+    <script src="core/modValidator.js"></script>
+    <script src="core/modUtils.js"></script>
+    <script src="core/modMarket.js"></script>
+    <script src="core/modpacks.js"></script>
+    <script src="core/launcher.js"></script>
+    <script src="core/profile.js"></script>
+    <script src="core/help.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/generator.js"></script>
+    <script src="js/mods.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/tools.js"></script>
+    <script src="js/market.js"></script>
+    <script src="js/modpacks.js"></script>
+    <script src="js/launcher.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/help.js"></script>
+</body>
+</html>
