@@ -18,38 +18,13 @@ MCGA.Core.AIParser = (function() {
 
         var messages = [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: '请设计一个Minecraft模组，需求如下：\\n\\n' + userInput + '\\n\\n基础配置：\\n- MC版本: ' + (config.mcVersion || '1.20.1') + '\\n- 加载器: ' + (config.loader || 'forge') + '\\n- 作者: ' + (config.author || 'MCGA') + '\\n\\n请直接输出JSON，不要有任何其他文字。' }
+            { role: 'user', content: '请设计一个Minecraft模组，需求如下：\n\n' + userInput + '\n\n基础配置：\n- MC版本: ' + (config.mcVersion || '1.20.1') + '\n- 加载器: ' + (config.loader || 'forge') + '\n- 作者: ' + (config.author || 'MCGA') + '\n\n请直接输出JSON，不要有任何其他文字。' }
         ];
 
-        fetch('/api/ai/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                apiKey: settings.apiKey,
-                apiUrl: apiUrl,
-                model: model,
-                messages: messages,
-                temperature: temperature
-            })
-        })
-        .then(function(response) {
-            if (!response.ok) {
-                return response.json().then(function(data) {
-                    throw new Error(data.error || 'AI请求失败: ' + response.status);
-                });
-            }
-            return response.json();
-        })
-        .then(function(data) {
-            if (!data.success) {
-                throw new Error(data.error || 'AI响应失败');
-            }
-
-            var content = data.content || '';
+        function processResponse(content) {
             var jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/) || [null, content];
             var jsonStr = jsonMatch[1] || content;
 
-            // 尝试提取JSON
             var jsonStart = jsonStr.indexOf('{');
             var jsonEnd = jsonStr.lastIndexOf('}');
             if (jsonStart >= 0 && jsonEnd > jsonStart) {
@@ -58,7 +33,6 @@ MCGA.Core.AIParser = (function() {
 
             var modData = JSON.parse(jsonStr);
 
-            // 补充必要字段
             modData.modId = modData.modId || config.modId;
             modData.modName = modData.modName || config.modName || modData.modId;
             modData.mcVersion = config.mcVersion || modData.mcVersion || '1.20.1';
@@ -70,7 +44,6 @@ MCGA.Core.AIParser = (function() {
             modData.items = modData.items || [];
             modData.recipes = modData.recipes || [];
 
-            // 确保方块有block_item
             for (var i = 0; i < modData.blocks.length; i++) {
                 var block = modData.blocks[i];
                 var hasItem = false;
@@ -91,12 +64,62 @@ MCGA.Core.AIParser = (function() {
                 }
             }
 
-            callback(null, modData);
-        })
-        .catch(function(error) {
-            console.error('AI parse error:', error);
-            callback(error);
-        });
+            return modData;
+        }
+
+        if (window.isElectron && window.electronAPI) {
+            window.electronAPI.aiRequest({
+                url: apiUrl,
+                apiKey: settings.apiKey,
+                model: model,
+                messages: messages,
+                temperature: temperature
+            }).then(function(data) {
+                if (data.success) {
+                    try {
+                        var modData = processResponse(data.content || '');
+                        callback(null, modData);
+                    } catch (e) {
+                        callback(new Error('AI响应解析失败: ' + e.message));
+                    }
+                } else {
+                    callback(new Error(data.error || 'AI请求失败'));
+                }
+            }).catch(function(error) {
+                callback(error);
+            });
+        } else {
+            fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    apiKey: settings.apiKey,
+                    apiUrl: apiUrl,
+                    model: model,
+                    messages: messages,
+                    temperature: temperature
+                })
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.json().then(function(data) {
+                        throw new Error(data.error || 'AI请求失败: ' + response.status);
+                    });
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (!data.success) {
+                    throw new Error(data.error || 'AI响应失败');
+                }
+                var modData = processResponse(data.content || '');
+                callback(null, modData);
+            })
+            .catch(function(error) {
+                console.error('AI parse error:', error);
+                callback(error);
+            });
+        }
     }
 
     function loadAISettings() {

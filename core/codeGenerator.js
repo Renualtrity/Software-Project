@@ -4,6 +4,16 @@ MCGA.Core = MCGA.Core || {};
 MCGA.Core.CodeGenerator = (function() {
     var PACKAGE_BASE = null;
 
+    var RESERVED_NAMES = ['Block', 'Item', 'Entity', 'TileEntity', 'World', 'Level', 'Player', 'EntityPlayer', 'Minecraft', 'ForgeRegistries', 'DeferredRegister', 'RegistryObject', 'Event', 'IEventBus', 'FMLJavaModLoadingContext', 'Mod', 'Properties', 'ItemStack', 'BlockPos', 'BlockState', 'BlockBehaviour', 'SoundType', 'Material', 'Blocks', 'Items', 'Registry', 'Forge', 'FML'];
+
+    function toSafeClassName(name) {
+        var className = toPascalCase(name);
+        if (RESERVED_NAMES.indexOf(className) !== -1) {
+            className = className + 'Mod';
+        }
+        return className;
+    }
+
     function generateModProject(modData, callback) {
         try {
             PACKAGE_BASE = 'com.' + modData.modId;
@@ -17,6 +27,7 @@ MCGA.Core.CodeGenerator = (function() {
             addFile(files, 'gradlew.bat', generateGradleWrapperScript('windows'));
             addFile(files, 'gradle/wrapper/gradle-wrapper.properties', generateGradleWrapperProperties(modData));
             addFile(files, 'src/main/resources/META-INF/mods.toml', generateModsToml(modData));
+            addFile(files, 'src/main/resources/META-INF/accesstransformer.cfg', generateAccessTransformer(modData));
             addFile(files, 'src/main/resources/pack.mcmeta', generatePackMcmeta(modData));
 
             var mainClass = generateMainClass(modData);
@@ -24,15 +35,17 @@ MCGA.Core.CodeGenerator = (function() {
 
             for (var i = 0; i < modData.blocks.length; i++) {
                 var block = modData.blocks[i];
+                if (!block.id || !block.id.trim()) continue;
                 var blockClass = generateBlockClass(modData, block);
-                addFile(files, 'src/main/java/' + packageToPath(PACKAGE_BASE) + '/block/' + toPascalCase(block.id) + '.java', blockClass);
+                addFile(files, 'src/main/java/' + packageToPath(PACKAGE_BASE) + '/block/' + toSafeClassName(block.id) + '.java', blockClass);
             }
 
             for (var j = 0; j < modData.items.length; j++) {
                 var item = modData.items[j];
                 if (item.type === 'block_item') continue;
+                if (!item.id || !item.id.trim()) continue;
                 var itemClass = generateItemClass(modData, item);
-                addFile(files, 'src/main/java/' + packageToPath(PACKAGE_BASE) + '/item/' + toPascalCase(item.id) + '.java', itemClass);
+                addFile(files, 'src/main/java/' + packageToPath(PACKAGE_BASE) + '/item/' + toSafeClassName(item.id) + '.java', itemClass);
             }
 
             if (hasOffhandFeature(modData) || hasUndeadDamageFeature(modData)) {
@@ -128,7 +141,39 @@ MCGA.Core.CodeGenerator = (function() {
         return false;
     }
 
+    function getForgeVersion(mcVersion) {
+        var versions = {
+            '1.20.1': '47.2.0',
+            '1.20.2': '48.1.0',
+            '1.20.3': '49.0.2',
+            '1.20.4': '49.0.38',
+            '1.20.5': '50.0.22',
+            '1.20.6': '50.1.0',
+            '1.21.1': '52.0.28',
+            '1.21.3': '53.0.25',
+            '1.21.4': '54.0.16'
+        };
+        return versions[mcVersion] || versions['1.20.1'];
+    }
+
+    function getJavaVersion(mcVersion) {
+        if (mcVersion && mcVersion >= '1.20.5') {
+            return 21;
+        }
+        return 17;
+    }
+
+    function getPackFormat(mcVersion) {
+        if (mcVersion && mcVersion >= '1.21') return 48;
+        if (mcVersion && mcVersion >= '1.20.5') return 41;
+        if (mcVersion && mcVersion >= '1.20.3') return 22;
+        if (mcVersion && mcVersion >= '1.20.2') return 18;
+        return 15;
+    }
+
     function generateBuildGradle(modData) {
+        var forgeVersion = modData.loaderVersion || getForgeVersion(modData.mcVersion);
+        var javaVersion = getJavaVersion(modData.mcVersion);
         var lines = [];
         lines.push('plugins {');
         if (modData.loader === 'forge') {
@@ -146,7 +191,8 @@ MCGA.Core.CodeGenerator = (function() {
         lines.push("archivesBaseName = '" + modData.modId + "'");
         lines.push('');
         lines.push('java {');
-        lines.push('    toolchain.languageVersion = JavaLanguageVersion.of(17)');
+        lines.push('    sourceCompatibility = JavaVersion.VERSION_' + javaVersion);
+        lines.push('    targetCompatibility = JavaVersion.VERSION_' + javaVersion);
         lines.push('}');
         lines.push('');
         lines.push('minecraft {');
@@ -183,7 +229,7 @@ MCGA.Core.CodeGenerator = (function() {
         lines.push('');
         lines.push('dependencies {');
         if (modData.loader === 'forge') {
-            lines.push("    minecraft 'net.minecraftforge:forge:" + modData.mcVersion + '-' + (modData.loaderVersion || '47.2.0') + "'");
+            lines.push("    minecraft 'net.minecraftforge:forge:" + modData.mcVersion + '-' + forgeVersion + "'");
         }
         lines.push('}');
         lines.push('');
@@ -203,10 +249,6 @@ MCGA.Core.CodeGenerator = (function() {
         lines.push("            \"Implementation-Timestamp\": \"${new Date().format(\"yyyy-MM-dd'T'HH:mm:ssZ\")}\"");
         lines.push('        ])');
         lines.push('    }');
-        lines.push('}');
-        lines.push('');
-        lines.push('reobfJar {');
-        lines.push('    outputJar = file(\"build/libs/' + modData.modId + '-' + modData.mcVersion + '-' + modData.version + '.jar\")');
         lines.push('}');
         return lines.join('\n');
     }
@@ -256,7 +298,7 @@ MCGA.Core.CodeGenerator = (function() {
     }
 
     function generateGradleWrapperProperties(modData) {
-        var gradleVersion = modData.mcVersion >= '1.20.6' ? '8.5' : '8.1.1';
+        var gradleVersion = '7.6.3';
         return 'distributionBase=GRADLE_USER_HOME\n' +
                'distributionPath=wrapper/dists\n' +
                'distributionUrl=https\\://services.gradle.org/distributions/gradle-' + gradleVersion + '-bin.zip\n' +
@@ -265,7 +307,24 @@ MCGA.Core.CodeGenerator = (function() {
                'zipStorePath=wrapper/dists\n';
     }
 
+    function getForgeVersionRange(mcVersion) {
+        var major = getForgeVersion(mcVersion).split('.')[0];
+        var next = parseInt(major) + 1;
+        return '[' + major + ',' + next + ')';
+    }
+
+    function getMcVersionRange(mcVersion) {
+        var parts = mcVersion.split('.');
+        var major = parseInt(parts[0]);
+        var minor = parseInt(parts[1]);
+        var patch = parseInt(parts[2] || 0);
+        var upperMinor = minor + 1;
+        return '[' + mcVersion + ',' + major + '.' + upperMinor + ')';
+    }
+
     function generateModsToml(modData) {
+        var forgeRange = getForgeVersionRange(modData.mcVersion);
+        var mcRange = getMcVersionRange(modData.mcVersion);
         var lines = [];
         lines.push('modLoader="javafml"');
         lines.push('loaderVersion="[1,)"');
@@ -287,26 +346,35 @@ MCGA.Core.CodeGenerator = (function() {
         lines.push('[[dependencies.' + modData.modId + ']]');
         lines.push('modId="forge"');
         lines.push('mandatory=true');
-        lines.push('versionRange="[47,48)"');
+        lines.push('versionRange="' + forgeRange + '"');
         lines.push('ordering="NONE"');
         lines.push('side="BOTH"');
         lines.push('');
         lines.push('[[dependencies.' + modData.modId + ']]');
         lines.push('modId="minecraft"');
         lines.push('mandatory=true');
-        lines.push('versionRange="[' + modData.mcVersion + ',1.21)"');
+        lines.push('versionRange="' + mcRange + '"');
         lines.push('ordering="NONE"');
         lines.push('side="BOTH"');
         return lines.join('\n');
     }
 
     function generatePackMcmeta(modData) {
+        var packFormat = getPackFormat(modData.mcVersion);
         return JSON.stringify({
             pack: {
                 description: modData.modName + ' resources',
-                pack_format: 15
+                pack_format: packFormat
             }
         }, null, 2);
+    }
+
+    function generateAccessTransformer(modData) {
+        var lines = [];
+        lines.push('# Access transformer file for ' + modData.modId);
+        lines.push('# Auto-generated by MCGA Pro');
+        lines.push('');
+        return lines.join('\n');
     }
 
     function generateMainClass(modData) {
@@ -327,6 +395,14 @@ MCGA.Core.CodeGenerator = (function() {
         for (var i = 0; i < modData.blocks.length; i++) {
             var blockName = toPascalCase(modData.blocks[i].id);
             lines.push('import ' + PACKAGE_BASE + '.block.' + blockName + ';');
+        }
+
+        for (var n = 0; n < modData.items.length; n++) {
+            var item2 = modData.items[n];
+            if (item2.type === 'block_item') continue;
+            if (!item2.id || !item2.id.trim()) continue;
+            var itemName = toPascalCase(item2.id);
+            lines.push('import ' + PACKAGE_BASE + '.item.' + itemName + ';');
         }
 
         lines.push('');
@@ -374,6 +450,17 @@ MCGA.Core.CodeGenerator = (function() {
                 lines.push('    public static final RegistryObject<Item> ' + regName2 + '_ITEM = ITEMS.register("' + block2.id + '",');
                 lines.push('            () -> new net.minecraft.world.item.BlockItem(' + regName2 + '.get(), new Item.Properties()));');
             }
+            lines.push('');
+        }
+
+        for (var m = 0; m < modData.items.length; m++) {
+            var item = modData.items[m];
+            if (item.type === 'block_item') continue;
+            if (!item.id || !item.id.trim()) continue;
+            var iName = toPascalCase(item.id);
+            var iRegName = item.id.toUpperCase();
+            lines.push('    public static final RegistryObject<' + iName + '> ' + iRegName + ' = ITEMS.register("' + item.id + '",');
+            lines.push('            () -> new ' + iName + '(new Item.Properties()));');
             lines.push('');
         }
 
@@ -534,12 +621,39 @@ MCGA.Core.CodeGenerator = (function() {
     }
 
     function generateRecipeJson(recipe, modData) {
-        return JSON.stringify({
-            type: 'minecraft:' + recipe.type,
-            pattern: recipe.pattern,
-            key: recipe.key,
-            result: recipe.result
-        }, null, 2);
+        var result = {};
+        if (recipe.output) {
+            if (recipe.outputCount && recipe.outputCount > 1) {
+                result = {
+                    item: recipe.output,
+                    count: recipe.outputCount
+                };
+            } else {
+                result = recipe.output;
+            }
+        } else if (recipe.result) {
+            result = recipe.result;
+        }
+
+        var recipeJson = {
+            type: 'minecraft:' + (recipe.type || 'crafting_shaped'),
+            result: result
+        };
+
+        if (recipe.pattern) {
+            recipeJson.pattern = recipe.pattern;
+        }
+        if (recipe.key) {
+            recipeJson.key = recipe.key;
+        }
+        if (recipe.cookingTime) {
+            recipeJson.cookingTime = recipe.cookingTime;
+        }
+        if (recipe.experience) {
+            recipeJson.experience = recipe.experience;
+        }
+
+        return JSON.stringify(recipeJson, null, 2);
     }
 
     function generateLangFile(modData, locale) {

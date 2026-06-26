@@ -142,58 +142,154 @@ ipcMain.handle('write-project', async (event, projectDir, files) => {
     }
 });
 
+// 下载Gradle Wrapper JAR
+async function downloadGradleWrapperJar(projectDir, onLog) {
+    const wrapperDir = path.join(projectDir, 'gradle', 'wrapper');
+    const jarPath = path.join(wrapperDir, 'gradle-wrapper.jar');
+    
+    if (!fs.existsSync(wrapperDir)) {
+        fs.mkdirSync(wrapperDir, { recursive: true });
+    }
+    
+    if (fs.existsSync(jarPath)) {
+        return jarPath;
+    }
+    
+    const jarUrl = 'https://services.gradle.org/distributions/gradle-8.1.1-bin.zip';
+    const tempZipPath = path.join(wrapperDir, 'gradle-temp.zip');
+    
+    return new Promise((resolve, reject) => {
+        const https = require('https');
+        const http = require('http');
+        const urlObj = new URL('https://raw.githubusercontent.com/gradle/gradle/v8.1.1/gradle/wrapper/gradle-wrapper.jar');
+        const protocol = urlObj.protocol === 'https:' ? https : http;
+        
+        const file = fs.createWriteStream(jarPath);
+        const req = protocol.get(urlObj, (res) => {
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                file.close();
+                fs.unlink(jarPath, () => {});
+                const redirectUrl = new URL(res.headers.location, urlObj);
+                const proto = redirectUrl.protocol === 'https:' ? https : http;
+                const redirectReq = proto.get(redirectUrl, (res2) => {
+                    if (res2.statusCode !== 200) {
+                        reject(new Error('下载失败: HTTP ' + res2.statusCode));
+                        return;
+                    }
+                    res2.pipe(file);
+                    file.on('finish', () => {
+                        file.close();
+                        resolve(jarPath);
+                    });
+                });
+                redirectReq.on('error', reject);
+                return;
+            }
+            
+            if (res.statusCode !== 200) {
+                file.close();
+                fs.unlink(jarPath, () => {});
+                reject(new Error('下载失败: HTTP ' + res.statusCode));
+                return;
+            }
+            
+            res.pipe(file);
+            file.on('finish', () => {
+                file.close();
+                resolve(jarPath);
+            });
+        });
+        
+        req.on('error', (err) => {
+            file.close();
+            fs.unlink(jarPath, () => {});
+            reject(err);
+        });
+    });
+}
+
 // 执行Gradle构建
 ipcMain.handle('build-mod', async (event, projectDir, modData) => {
-    return new Promise((resolve) => {
-        const logs = [];
-        const startTime = Date.now();
+    const logs = [];
+    const startTime = Date.now();
 
-        logs.push('=== MCGA Pro 模组构建 ===');
-        logs.push('项目目录: ' + projectDir);
-        logs.push('模组ID: ' + modData.modId);
-        logs.push('开始时间: ' + new Date().toLocaleString());
+    logs.push('=== MCGA Pro 模组构建 ===');
+    logs.push('项目目录: ' + projectDir);
+    logs.push('模组ID: ' + modData.modId);
+    logs.push('开始时间: ' + new Date().toLocaleString());
+    logs.push('');
+
+    const gradlewPath = process.platform === 'win32' 
+        ? path.join(projectDir, 'gradlew.bat')
+        : path.join(projectDir, 'gradlew');
+    const wrapperJarPath = path.join(projectDir, 'gradle', 'wrapper', 'gradle-wrapper.jar');
+
+    let gradleCmd = null;
+
+    if (fs.existsSync(gradlewPath) && fs.existsSync(wrapperJarPath)) {
+        gradleCmd = gradlewPath;
+        logs.push('使用项目 Gradle Wrapper');
         logs.push('');
+    } else {
+        logs.push('[准备] 检查系统 Gradle...');
+        const hasSystemGradle = await new Promise((res) => {
+            exec('gradle -version', (err) => res(!err));
+        });
 
-        // 检查gradlew
-        const gradlewPath = process.platform === 'win32' 
-            ? path.join(projectDir, 'gradlew.bat')
-            : path.join(projectDir, 'gradlew');
-
-        let gradleCmd;
-        if (fs.existsSync(gradlewPath)) {
-            gradleCmd = gradlewPath;
-            logs.push('使用项目内置 Gradle Wrapper');
-        } else {
+        if (hasSystemGradle) {
             gradleCmd = 'gradle';
             logs.push('使用系统 Gradle');
+            logs.push('');
+        } else {
+            logs.push('系统未安装 Gradle，尝试下载 Gradle Wrapper...');
+            event.sender.send('build-status', { stage: 'downloading', progress: 5 });
+
+            try {
+                await downloadGradleWrapperJar(projectDir, (log) => {
+                    logs.push(log);
+                    event.sender.send('build-log', log);
+                });
+                
+                if (process.platform === 'win32') {
+                    fs.chmodSync(gradlewPath, 0o755);
+                }
+                
+                gradleCmd = gradlewPath;
+                logs.push('Gradle Wrapper 下载完成');
+                logs.push('');
+            } catch (err) {
+                logs.push('[错误] Gradle Wrapper 下载失败: ' + err.message);
+                logs.push('');
+                logs.push('请手动安装 Gradle 或检查网络连接');
+                return { success: false, error: '未找到 Gradle 且 Wrapper 下载失败', logs: logs };
+            }
         }
+    }
+
+    event.sender.send('build-status', { stage: 'building', progress: 10 });
+    logs.push('[构建] 执行 Gradle 构建...');
+    logs.push('命令: ' + gradleCmd + ' build');
+    logs.push('提示：首次构建需要下载依赖（5~15分钟），请耐心等待');
+    logs.push('');
+
+    return new Promise((resolve) => {
+        // Windows上运行.bat需要特殊处理，否则stdout无法捕获
+        var buildCmd, buildArgs;
+        if (process.platform === 'win32' && gradleCmd.endsWith('.bat')) {
+            buildCmd = 'cmd';
+            buildArgs = ['/c', gradleCmd, 'build', '--no-daemon'];
+        } else {
+            buildCmd = gradleCmd;
+            buildArgs = ['build', '--no-daemon'];
+        }
+
+        logs.push('[执行] ' + buildCmd + ' ' + buildArgs.join(' '));
         logs.push('');
 
-        // 先初始化Gradle wrapper（如果没有）
-        if (!fs.existsSync(gradlewPath)) {
-            logs.push('[1/4] 初始化 Gradle Wrapper...');
-            const initGradle = spawn('gradle', ['wrapper'], { cwd: projectDir, shell: true });
-            
-            initGradle.stdout.on('data', (data) => {
-                logs.push(data.toString().trim());
-                event.sender.send('build-log', data.toString().trim());
-            });
-            initGradle.stderr.on('data', (data) => {
-                logs.push('[ERROR] ' + data.toString().trim());
-                event.sender.send('build-log', '[ERROR] ' + data.toString().trim());
-            });
-        }
-
-        logs.push('[2/4] 执行 Gradle 构建...');
-        logs.push('命令: ' + gradleCmd + ' build');
-        logs.push('');
-
-        event.sender.send('build-status', { stage: 'building', progress: 50 });
-
-        const buildProcess = spawn(gradleCmd, ['build', '--no-daemon'], {
+        const buildProcess = spawn(buildCmd, buildArgs, {
             cwd: projectDir,
-            shell: true,
-            env: { ...process.env, JAVA_HOME: process.env.JAVA_HOME || '' }
+            env: { ...process.env, JAVA_HOME: process.env.JAVA_HOME || '' },
+            stdio: ['ignore', 'pipe', 'pipe']
         });
 
         buildProcess.stdout.on('data', (data) => {
@@ -206,9 +302,9 @@ ipcMain.handle('build-mod', async (event, projectDir, modData) => {
 
         buildProcess.stderr.on('data', (data) => {
             const msg = data.toString().trim();
-            if (msg && !msg.includes('Deprecated Gradle features')) {
-                logs.push('[WARN] ' + msg);
-                event.sender.send('build-log', '[WARN] ' + msg);
+            if (msg) {
+                logs.push('[STDERR] ' + msg);
+                event.sender.send('build-log', '[STDERR] ' + msg);
             }
         });
 
@@ -217,8 +313,8 @@ ipcMain.handle('build-mod', async (event, projectDir, modData) => {
             const duration = ((endTime - startTime) / 1000).toFixed(1);
 
             logs.push('');
-            logs.push('[3/4] 构建进程结束 (退出码: ' + code + ')');
-            logs.push('耗时: ' + duration + ' 秒');
+            logs.push('构建进程结束 (退出码: ' + code + ')');
+            logs.push('总耗时: ' + duration + ' 秒');
             logs.push('');
 
             if (code === 0) {
@@ -238,14 +334,13 @@ ipcMain.handle('build-mod', async (event, projectDir, modData) => {
                     }
                 }
 
-                logs.push('[4/4] 检查输出文件...');
                 if (jarFile && fs.existsSync(jarFile)) {
                     const stats = fs.statSync(jarFile);
-                    logs.push('生成成功: ' + jarName);
+                    logs.push('=== 构建成功 ===');
+                    logs.push('生成文件: ' + jarName);
                     logs.push('文件大小: ' + (stats.size / 1024).toFixed(1) + ' KB');
                     logs.push('完整路径: ' + jarFile);
                     logs.push('');
-                    logs.push('=== 构建成功 ===');
 
                     event.sender.send('build-status', { 
                         stage: 'success', 
@@ -263,10 +358,9 @@ ipcMain.handle('build-mod', async (event, projectDir, modData) => {
                         duration: duration
                     });
                 } else {
-                    logs.push('警告: 未找到生成的 JAR 文件');
+                    logs.push('=== 构建完成但未找到 JAR ===');
                     logs.push('请检查 build/libs 目录');
                     logs.push('');
-                    logs.push('=== 构建完成但无输出 ===');
 
                     event.sender.send('build-status', { stage: 'warning', progress: 100 });
                     resolve({
@@ -277,13 +371,13 @@ ipcMain.handle('build-mod', async (event, projectDir, modData) => {
                     });
                 }
             } else {
-                logs.push('');
                 logs.push('=== 构建失败 ===');
-                logs.push('请检查上方日志中的错误信息');
-                logs.push('常见问题:');
+                logs.push('退出码: ' + code);
+                logs.push('');
+                logs.push('常见问题排查:');
                 logs.push('  1. Java 版本不兼容（需要 JDK 17+）');
-                logs.push('  2. Gradle 未安装或版本过低');
-                logs.push('  3. 源码编译错误');
+                logs.push('  2. 网络问题导致依赖下载失败');
+                logs.push('  3. 源码编译错误（请查看上方日志）');
                 logs.push('');
 
                 event.sender.send('build-status', { stage: 'failed', progress: 100 });
