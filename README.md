@@ -1,4 +1,4 @@
-<img width="882" height="482" alt="image" src="https://github.com/user-attachments/assets/e2427251-05cc-4c2a-9b8d-2e033ce8845e" /># MCGA Pro - Minecraft AI 模组生成系统
+MCGA Pro - Minecraft AI 模组生成系统
 
 ## 一、软件介绍
 
